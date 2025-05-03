@@ -1,122 +1,156 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
+import 'package:permission_handler/permission_handler.dart';
 
-void main() {
-  runApp(const MyApp());
-}
+void main() => runApp(const MyApp());
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
-  // This widget is the root of your application.
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
-    );
+  Widget build(BuildContext context) => const MaterialApp(
+        home: HomePage(),
+      );
+}
+
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  final _ble = FlutterReactiveBle();
+  DiscoveredDevice? _device;
+  String _connectionStatus = 'idle';
+  String _latestValue = '';
+  bool _isReading = false;
+
+  StreamSubscription<DiscoveredDevice>? _scanSub;
+  StreamSubscription<ConnectionStateUpdate>? _connSub;
+  StreamSubscription<List<int>>? _charSub;
+
+  // Replace with your BLE service & characteristic UUIDs
+  final _serviceUuid = Uuid.parse("bf27730d-860a-4e09-889c-2d8b6a9e0fe7");
+  final _charUuid = Uuid.parse("00002A18-0000-1000-8000-00805F9B34FB");
+
+  @override
+  void initState() {
+    super.initState();
+    _start();
   }
-}
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+  Future<void> _start() async {
+    await [
+      Permission.bluetoothScan,
+      Permission.bluetoothConnect,
+      Permission.locationWhenInUse,
+    ].request();
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+    _scanSub = _ble.scanForDevices(
+      withServices: [_serviceUuid],
+      scanMode: ScanMode.lowLatency,
+    ).listen((device) {
+      if (_device == null) {
+        setState(() => _device = device);
+        _scanSub?.cancel();
+        _connect();
+      }
+    }, onError: (e) {
+      setState(() => _connectionStatus = 'scan error: $e');
     });
   }
 
+  void _connect() {
+    if (_device == null) return;
+    setState(() => _connectionStatus = 'connecting to ${_device!.name}');
+
+    _connSub = _ble.connectToDevice(
+      id: _device!.id,
+      connectionTimeout: const Duration(seconds: 5),
+    ).listen((update) {
+      setState(() => _connectionStatus = update.connectionState.toString());
+
+      if (update.connectionState == DeviceConnectionState.connected) {
+        _subscribeCharacteristic();
+      }
+    }, onError: (e) {
+      setState(() => _connectionStatus = 'connection error: $e');
+    });
+  }
+
+  void _subscribeCharacteristic() {
+    final characteristic = QualifiedCharacteristic(
+      serviceId: _serviceUuid,
+      characteristicId: _charUuid,
+      deviceId: _device!.id,
+    );
+
+    _charSub = _ble.subscribeToCharacteristic(characteristic).listen((data) {
+      final str = utf8.decode(data);
+      setState(() => _latestValue = str);
+    }, onError: (e) {
+      setState(() => _latestValue = 'sub error: $e');
+    });
+  }
+
+  Future<void> _readCharacteristic() async {
+    if (_device == null) return;
+    setState(() => _isReading = true);
+
+    try {
+      final characteristic = QualifiedCharacteristic(
+        serviceId: _serviceUuid,
+        characteristicId: _charUuid,
+        deviceId: _device!.id,
+      );
+
+      final value = await _ble.readCharacteristic(characteristic);
+      final str = utf8.decode(value);
+
+      setState(() => _latestValue = 'Read: $str');
+    } catch (e) {
+      setState(() => _latestValue = 'read error: $e');
+    } finally {
+      setState(() => _isReading = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _scanSub?.cancel();
+    _connSub?.cancel();
+    _charSub?.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
+      appBar: AppBar(title: const Text('BLE Test')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
         child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Device: ${_device?.name ?? 'scanning...'}'),
+            const SizedBox(height: 8),
+            Text('Status: $_connectionStatus'),
+            const Divider(),
+            const Text('Latest characteristic value:'),
+            const SizedBox(height: 8),
+            Text(_latestValue, style: const TextStyle(fontSize: 18)),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _isReading ? null : _readCharacteristic,
+              child: _isReading
+                  ? const CircularProgressIndicator()
+                  : const Text('Read Value'),
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }
