@@ -101,12 +101,14 @@ class _BleManagerWidgetState extends State<BleManagerWidget> {
     });
   }
 
-  void _sendAdvertising() async
-  {
+  void _sendAdvertising() async {
     await BlePeripheral.startAdvertising(
       services: [APP_UUID_0],
       localName: "PeripheralDevice",
-      manufacturerData: ManufacturerData(manufacturerId: 0xFF, data: utf8.encode("")),
+      manufacturerData: ManufacturerData(
+        manufacturerId: 0xFF,
+        data: utf8.encode(""),
+      ),
       addManufacturerDataInScanResponse: true,
     );
   }
@@ -116,59 +118,71 @@ class _BleManagerWidgetState extends State<BleManagerWidget> {
     _isScanning = true;
     setState(() {});
 
-    _scanSub = _ble.scanForDevices(withServices: [Uuid.parse(APP_UUID_0)]).listen((device) async {
-      if (!_isConnected) {
-        _device = device;
-        _lastReceived = utf8.decode(device.manufacturerData.sublist(2));
-        setState(() {});
+    _scanSub = _ble
+        .scanForDevices(withServices: [Uuid.parse(APP_UUID_0)])
+        .listen((device) async {
+          if (!_isConnected) {
+            _device = device;
+            _lastReceived = utf8.decode(device.manufacturerData.sublist(2));
+            setState(() {});
 
-        await Future.delayed(Duration(seconds: 1));
-        _connect();
-      }
-    });
+            await Future.delayed(Duration(seconds: 1));
+            _connect();
+          }
+        });
   }
 
   void _connect() {
     if (_device == null) return;
 
-    _connSub = _ble.connectToDevice(
-      id: _device!.id,
-      connectionTimeout: const Duration(seconds: 10),
-    ).listen((event) {
-      switch (event.connectionState) {
-        case DeviceConnectionState.connected:
-          _txCharacteristic = QualifiedCharacteristic(
-            serviceId: Uuid.parse(APP_UUID_0),
-            characteristicId: Uuid.parse(APP_UUID2),
-            deviceId: _device!.id,
-          );
-          _subscribeCharacteristic();
-          setState(() => _isConnected = true);
-          break;
+    _connSub = _ble
+        .connectToDevice(
+          id: _device!.id,
+          connectionTimeout: const Duration(seconds: 10),
+        )
+        .listen(
+          (event) {
+            switch (event.connectionState) {
+              case DeviceConnectionState.connected:
+                _txCharacteristic = QualifiedCharacteristic(
+                  serviceId: Uuid.parse(APP_UUID_0),
+                  characteristicId: Uuid.parse(APP_UUID2),
+                  deviceId: _device!.id,
+                );
+                _subscribeCharacteristic();
+                setState(() => _isConnected = true);
+                break;
 
-        case DeviceConnectionState.disconnected:
-        case DeviceConnectionState.disconnecting:
-          setState(() => _isConnected = false);
-          break;
+              case DeviceConnectionState.disconnected:
+              case DeviceConnectionState.disconnecting:
+                setState(() => _isConnected = false);
+                break;
 
-        default:
-          break;
-      }
-    }, onError: (e) {
-      debugPrint("Connection failed: $e");
-    });
+              default:
+                break;
+            }
+          },
+          onError: (e) {
+            debugPrint("Connection failed: $e");
+          },
+        );
   }
 
   void _subscribeCharacteristic() {
     if (_txCharacteristic == null) return;
 
-    _charSub = _ble.subscribeToCharacteristic(_txCharacteristic!).listen((data) {
-      setState(() {
-        _lastReceived = utf8.decode(data);
-      });
-    }, onError: (e) {
-      debugPrint("Subscription failed: $e");
-    });
+    _charSub = _ble
+        .subscribeToCharacteristic(_txCharacteristic!)
+        .listen(
+          (data) {
+            setState(() {
+              _lastReceived = utf8.decode(data);
+            });
+          },
+          onError: (e) {
+            debugPrint("Subscription failed: $e");
+          },
+        );
   }
 
   Future<void> _writeCharacteristic() async {
@@ -177,7 +191,10 @@ class _BleManagerWidgetState extends State<BleManagerWidget> {
     _count += 1;
     final data = utf8.encode("Count: $_count");
     try {
-      await _ble.writeCharacteristicWithResponse(_txCharacteristic!, value: data);
+      await _ble.writeCharacteristicWithResponse(
+        _txCharacteristic!,
+        value: data,
+      );
       setState(() => _lastSent = "Count: $_count");
     } catch (e) {
       debugPrint("Write error: $e");

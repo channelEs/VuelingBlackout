@@ -1,4 +1,5 @@
 import 'package:blacked_flut/ble.dart';
+import 'package:blacked_flut/ble_dries.dart';
 import 'package:blacked_flut/ble_stateful.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -32,19 +33,6 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  Ble ble = Ble();
-  late String lastMessage;
-
-  void _incrementCounter() {
-    // if (!Ble.isInitialized) {
-    //   ble.initialize();
-    // }
-
-    // ble.messagesQueue.add("Hello");
-
-    setState(() => {});
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -56,17 +44,10 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            BleManagerWidget(actAsPeripheral: true),
-            Text(ble.lastRcvFrom),
-            Text(ble.lastRecvMsg),
-            Text("Last send: ${ble.lastSndMsg}"),
+            // BleManagerWidget(actAsPeripheral: true),
+            BleDriesWidget(),
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
       ),
     );
   }
