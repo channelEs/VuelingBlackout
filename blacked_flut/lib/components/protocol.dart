@@ -28,9 +28,12 @@ class Protocol {
 
       receivedHashes[hash] = ();
 
-      if (flightNumber == message.flightNumber) {
+      if (flightNumber == message.flightNumber || message.flightNumber == 0) {
         debugPrint("Received message for me: ${message.content}");
         if (_onMessageCallback != null) {
+          if (message.flightNumber == 0) {
+            message.content = "(GLOBAL) ${message.content}";
+          }
           _onMessageCallback!(message);
         }
       }

@@ -83,8 +83,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return MessageScreen();
-    /*return Scaffold(
+    //return MessageScreen();
+    return Scaffold(
       body: Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 30.0),
@@ -92,7 +92,7 @@ class _MyHomePageState extends State<MyHomePage> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SvgPicture.asset('assets/unblacked.svg', height: 80),
+              SvgPicture.asset('assets/unblacked2.svg', height: 80),
               const Text(
                 'lights off, keep vueling',
                 style: TextStyle(
@@ -183,8 +183,8 @@ class _MyHomePageState extends State<MyHomePage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        //builder: (_) => PostScreen(flightId: _flightNumber),
-                        builder: (_) => MessageScreen(),
+                        builder: (_) => PostScreen(flightId: _flightNumber),
+                        // builder: (_) => MessageScreen(),
                       ),
                     );
                   },
@@ -212,6 +212,6 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
         ),
       ), // This trailing comma makes auto-formatting nicer for build methods.
-    );*/
+    );
   }
 }

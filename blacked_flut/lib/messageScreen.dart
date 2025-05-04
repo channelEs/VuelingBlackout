@@ -207,17 +207,20 @@ class _MessageScreenState extends State<MessageScreen> {
                             return;
                           }
 
-                          if (_flightNumber.isEmpty) {
-                            return;
-                          }
+                          // if (_flightNumber.isEmpty) {
+                          //   return;
+                          // }
 
                           if (_messageController.text.isEmpty) {
                             return;
                           }
 
-                          int flightNumber = int.parse(
-                            _flightNumber.substring(2),
-                          );
+                          int flightNumber = 0;
+                          if (_flightNumber.isNotEmpty) {
+                            flightNumber = int.parse(
+                              _flightNumber.substring(2),
+                            );
+                          }
 
                           String text = _messageController.text;
 
@@ -256,7 +259,7 @@ class _MessageScreenState extends State<MessageScreen> {
                     Center(
                       child: Text(
                         _sendCount == 0
-                            ? "You haven't sent any messages yet."
+                            ? "You haven't sent any messages yet :("
                             : "You have sent $_sendCount message${_sendCount == 1 ? '' : 's'}!",
                         style: const TextStyle(
                           fontSize: 16,
