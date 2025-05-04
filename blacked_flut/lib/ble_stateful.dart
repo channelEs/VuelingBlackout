@@ -18,9 +18,12 @@ class BleManagerWidget extends StatefulWidget {
 }
 
 class _BleManagerWidgetState extends State<BleManagerWidget> {
-  static Uuid APP_UUID_0 = Uuid.parse("bf27730d-860a-4e09-889c-2d8b6a9e0fe7");
-  static Uuid APP_UUID_RX = Uuid.parse("00002A18-0000-1000-8000-00805F9B34FB");
-  static Uuid APP_UUID_TX = Uuid.parse("00002A18-0000-1000-8000-00805F9B34FB");
+  // static Uuid APP_UUID_0 = Uuid.parse("bf27730d-860a-4e09-889c-2d8b6a9e0fe7");
+  // static Uuid APP_UUID_RX = Uuid.parse("00002A18-0000-1000-8000-00805F9B34FB");
+  // static Uuid APP_UUID_TX = Uuid.parse("00002A18-0000-1000-8000-00805F9B34FB");
+  static final Uuid APP_UUID_0 = Uuid.parse("bf27730d-860a-4e09-889c-2d8b6a9e0fe7");
+  static final Uuid APP_UUID_RX = Uuid.parse("bf27730d-860a-4e09-889c-2d8b6a9e0fe8"); // RX Characteristic
+  static final Uuid APP_UUID_TX = Uuid.parse("bf27730d-860a-4e09-889c-2d8b6a9e0fe9"); // TX Characteristic
 
   final FlutterReactiveBle _ble = FlutterReactiveBle();
 
@@ -30,6 +33,7 @@ class _BleManagerWidgetState extends State<BleManagerWidget> {
   Stream<List<int>>? _charSub;
   QualifiedCharacteristic? _rxCharacteristic;
   QualifiedCharacteristic? _txCharacteristic;
+  Stream<ConnectionStateUpdate>? _currentConnectionStream;
 
   bool _isConnected = false;
   bool _isScanning = false;
@@ -66,39 +70,48 @@ class _BleManagerWidgetState extends State<BleManagerWidget> {
   void _initAdvertise() async {
     await BlePeripheral.initialize();
 
-    var notificationDescriptor = BleDescriptor(
-      uuid: "00002908-0000-1000-8000-00805F9B34FB",
-      value: Uint8List.fromList([0, 1]),
-      permissions: [
-        AttributePermissions.readable.index,
-        AttributePermissions.writeable.index,
-      ],
-    );
-
     await BlePeripheral.addService(
       BleService(
         uuid: APP_UUID_0.toString(),
         primary: true,
         characteristics: [
           BleCharacteristic(
-            uuid: APP_UUID_RX.toString(),
+            uuid: APP_UUID_RX.toString(), // e.g., 0fe8
             properties: [
-              CharacteristicProperties.read.index,
-              CharacteristicProperties.notify.index,
               CharacteristicProperties.write.index,
-            ],
-            descriptors: [notificationDescriptor],
-            value: null,
+              CharacteristicProperties.read.index,
+              ],
             permissions: [
               AttributePermissions.readable.index,
               AttributePermissions.writeable.index,
             ],
           ),
+          BleCharacteristic(
+            uuid: APP_UUID_TX.toString(), // e.g., 0fe9
+            properties: [
+              CharacteristicProperties.read.index,
+              CharacteristicProperties.notify.index,
+              CharacteristicProperties.write.index
+            ],
+            permissions: [
+              AttributePermissions.readable.index,
+              AttributePermissions.writeable.index,
+            ],
+            value: utf8.encode("DeviceCount: 0")
+          ),
         ],
       ),
     );
 
-    _sendAdvertising();
+    await BlePeripheral.startAdvertising(
+      services: [APP_UUID_0.toString()],
+      localName: getRandomString(8),
+      manufacturerData: ManufacturerData(
+        manufacturerId: 0xFF,
+        data: utf8.encode("HELLO"),
+      ),
+      addManufacturerDataInScanResponse: true,
+    );
 
     setState(() {
       _isAdvertising = true;
@@ -143,70 +156,114 @@ class _BleManagerWidgetState extends State<BleManagerWidget> {
         setState(() {});
 
         _connect();
-        /*
-            
-            _txCharacteristic = QualifiedCharacteristic(
-              serviceId: Uuid.parse(APP_UUID_0),
-              characteristicId: Uuid.parse(APP_UUID2),
-              deviceId: _device!.id,
-            );
-            _subscribeCharacteristic();
-            */
       }
     });
   }
 
-  void _connect() {
+  void _connect() async {
     if (_device == null) return;
+    await _connSub?.cancel();
+    await Future.delayed(const Duration(milliseconds: 500));
+    debugPrint("[BLE_Log] start connection || info: ${_device!.id}");
+    _currentConnectionStream = _ble
+    .connectToDevice(
+      id: _device!.id,
+      servicesWithCharacteristicsToDiscover: {
+        APP_UUID_0: [
+          APP_UUID_RX,
+          APP_UUID_TX,
+        ]
+      },
+      connectionTimeout: const Duration(seconds: 5),
+    );
+    debugPrint("[BLE_Log] start connection");
+    setState(() {});
+    _connSub = _currentConnectionStream!.listen((event) async {
+      debugPrint("BLE connection state: ${event.connectionState.toString()}");
+      switch (event.connectionState) {
+        case DeviceConnectionState.connected:
+          debugPrint("Connected");
+          /*
+          _txCharacteristic = QualifiedCharacteristic(
+            serviceId: APP_UUID_0,
+            characteristicId: APP_UUID_TX,
+            deviceId: _device!.id,
+          );
+          _rxCharacteristic = QualifiedCharacteristic(
+            serviceId: APP_UUID_0,
+            characteristicId: APP_UUID_RX,
+            deviceId: _device!.id,
+          );
+          */
+          await _assignCharacteristics();
+          _subscribeCharacteristic();
+          // _subscribeCharacteristic();
 
-    _connSub = _ble
-        .connectToAdvertisingDevice(
-          id: _device!.id,
-          prescanDuration: Duration(seconds: 1),
-          withServices: [APP_UUID_0, APP_UUID_RX, APP_UUID_TX],
-        )
-        .listen(
-          (event) {
-            switch (event.connectionState) {
-              case DeviceConnectionState.connected:
-                debugPrint("Connected");
-                _txCharacteristic = QualifiedCharacteristic(
-                  serviceId: APP_UUID_0,
-                  characteristicId: APP_UUID_TX,
-                  deviceId: _device!.id,
-                );
-                _subscribeCharacteristic();
-                _rxCharacteristic = QualifiedCharacteristic(
-                  serviceId: APP_UUID_0,
-                  characteristicId: APP_UUID_RX,
-                  deviceId: _device!.id,
-                );
+          setState(() => _isConnected = true);
+          break;
 
-                setState(() => _isConnected = true);
-                break;
-
-              case DeviceConnectionState.disconnected:
-              case DeviceConnectionState.disconnecting:
-                setState(() => _isConnected = false);
-                break;
-
-              default:
-                break;
-            }
-          },
-          onError: (e) {
-            debugPrint("Connection failed: $e");
-          },
-        );
+        case DeviceConnectionState.disconnected:
+          debugPrint("[BLE_Log] disconneceted device: ${_device!.id}");
+        case DeviceConnectionState.disconnecting:
+          debugPrint("[BLE_Log] disconnecting device: ${_device!.id}");
+          setState(() => _isConnected = false);
+          break;
+        default:
+          break;
+      }
+    },
+    onError: (e) {
+      debugPrint("Connection failed: $e");
+    },
+    );
   }
 
+  Future<void> _assignCharacteristics() async {
+    final services = await _ble.getDiscoveredServices(_device!.id);
+
+    for (var service in services) {
+      debugPrint("[BL_Log] Service: ${service.id}");
+      if (service.id == APP_UUID_0) {
+        debugPrint("[BL_Log] IN SERVICE: ${service.id}");
+        for (var char in service.characteristics) {
+          debugPrint("[BL_Log] characteristic: ${char.id}");
+        }
+        final tx = service.characteristics.firstWhere(
+          (c) => c.id == APP_UUID_TX,
+          orElse: () => throw Exception("TX not found"),
+        );
+
+        final rx = service.characteristics.firstWhere(
+          (c) => c.id == APP_UUID_RX,
+          orElse: () => throw Exception("RX not found"),
+        );
+        debugPrint("[BL_Log] IN SERVICE: ${service.id}");
+
+        setState(() {
+          _txCharacteristic = QualifiedCharacteristic(
+            characteristicId: tx.id,
+            serviceId: service.id,
+            deviceId: _device!.id,
+          );
+
+          _rxCharacteristic = QualifiedCharacteristic(
+            characteristicId: rx.id,
+            serviceId: service.id,
+            deviceId: _device!.id,
+          );
+        });
+      }
+    }
+  }
+
+
   void _subscribeCharacteristic() async {
-    if (_txCharacteristic == null) return;
-    await Future.delayed(Duration(seconds: 3));
+    // await Future.delayed(Duration(seconds: 3));
     _charSub = _ble.subscribeToCharacteristic(_txCharacteristic!);
-    debugPrint(_charSub.toString());
+    debugPrint("[BLE_Log] subs characteristic result: ${_charSub.toString()}");
     _charSub!.listen(
       (data) {
+        debugPrint("[READED BLE] Subscription LISTENING || data: ${utf8.decode(data)}");
         setState(() {
           _lastReceived = utf8.decode(data);
         });
@@ -218,18 +275,38 @@ class _BleManagerWidgetState extends State<BleManagerWidget> {
   }
 
   Future<void> _writeCharacteristic() async {
-    if (_txCharacteristic == null) return;
+    if (_rxCharacteristic == null) return;
 
     _count += 1;
-    final data = utf8.encode("Count: $_count");
+    final data = utf8.encode("DeviceCount: $_count");
+
     try {
       await _ble.writeCharacteristicWithoutResponse(
         _rxCharacteristic!,
         value: data,
       );
-      setState(() => _lastSent = "Count: $_count");
+      debugPrint("[BLE] Write successful to RX characteristic: $data || into the rx: ${_rxCharacteristic!.characteristicId}");
+      setState(() => _lastSent = "DeviceCount: $_count");
+      await Future.delayed(Duration(milliseconds: 100)); // Adjust timing as necessary
+
+      _readChar();
     } catch (e) {
       debugPrint("Write error: $e");
+    }
+  }
+
+  void _readChar() async
+  {
+    if (_rxCharacteristic == null) return;
+    try {
+      final response = await _ble.readCharacteristic(
+        _rxCharacteristic!
+      );
+      debugPrint("[BLE] READ successful to RX characteristic: $response || into the rx: ${_rxCharacteristic!.characteristicId}");
+      setState(() => _lastReceived = String.fromCharCodes(response));
+
+    } catch (e) {
+      debugPrint("[BLE] Read error: $e");
     }
   }
 
@@ -254,8 +331,8 @@ class _BleManagerWidgetState extends State<BleManagerWidget> {
         const SizedBox(height: 16),
         if (_isAdvertising)
           ElevatedButton(
-            onPressed: _sendAdvertising,
-            child: const Text("Send Advertising"),
+            onPressed: _readChar,
+            child: const Text("READ"),
           ),
         if (_isAdvertising)
           ElevatedButton(
