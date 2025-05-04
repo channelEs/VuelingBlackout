@@ -63,5 +63,5 @@ void showCustomNotification(BuildContext context) {
   overlay.insert(overlayEntry);
 
   // Remove it after some duration
-  //Future.delayed(const Duration(seconds: 3)).then((_) => overlayEntry.remove());
+  Future.delayed(const Duration(seconds: 5)).then((_) => overlayEntry.remove());
 }

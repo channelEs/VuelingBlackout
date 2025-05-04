@@ -100,7 +100,8 @@ class _PostScreenState extends State<PostScreen> {
         });
       });
     });
-    Protocol.initialize(3910);
+    int fid = int.parse(widget.flightId.substring(2));
+    Protocol.initialize(fid);
   }
 
   @override
@@ -124,7 +125,8 @@ class _PostScreenState extends State<PostScreen> {
                     fontSize: 40,
                     fontWeight: FontWeight.bold,
                     fontFamily: 'Roboto',
-                    color: Colors.black87,
+                    // color: Colors.black87,
+                    color: Color(0xFF505047),
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -135,7 +137,8 @@ class _PostScreenState extends State<PostScreen> {
                     fontWeight: FontWeight.w900,
                     fontFamily: 'Roboto',
                     fontStyle: FontStyle.italic,
-                    color: Colors.black87,
+                    // color: Colors.black87,
+                    color: Color(0xFF505047),
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -250,10 +253,10 @@ class _PostScreenState extends State<PostScreen> {
           ),
         ],
       ),
-      /* floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton(
         onPressed: () => showCustomNotification(context),
         child: const Icon(Icons.add),
-      ), */
+      ),
     );
   }
 }
