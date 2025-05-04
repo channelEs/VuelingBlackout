@@ -14,7 +14,7 @@ class MessageScreen extends StatefulWidget {
 class _MessageScreenState extends State<MessageScreen> {
   final _controller = TextEditingController();
   final _messageController = TextEditingController();
-  final _db = Localstore.instance;
+  int _sendCount = 0;
   String _flightNumber = '';
   bool _readyCheck = false;
 
@@ -229,25 +229,11 @@ class _MessageScreenState extends State<MessageScreen> {
                           }
 
                           Protocol.sendMessage(text);
+
+                          setState(() {
+                            _sendCount++;
+                          });
                         },
-                        /* onPressed:
-                            _readyCheck
-                                ? () async {
-                                  await _db
-                                      .collection('flights')
-                                      .doc('my_flight')
-                                      .set({'flight_number': _flightNumber});
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder:
-                                          (_) => PostScreen(
-                                            flightId: _flightNumber,
-                                          ),
-                                    ),
-                                  );
-                                }
-                                : null, */
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFFFCB03),
                           foregroundColor: const Color(0xFF505047),
@@ -263,6 +249,18 @@ class _MessageScreenState extends State<MessageScreen> {
                             fontWeight: FontWeight.w500,
                             fontFamily: 'HammersmithOne',
                           ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Center(
+                      child: Text(
+                        _sendCount == 0
+                            ? "You haven't sent any messages yet."
+                            : "You have sent $_sendCount message${_sendCount == 1 ? '' : 's'}!",
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontFamily: 'Roboto',
                         ),
                       ),
                     ),

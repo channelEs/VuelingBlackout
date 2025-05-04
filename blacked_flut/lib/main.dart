@@ -183,8 +183,8 @@ class _MyHomePageState extends State<MyHomePage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => PostScreen(flightId: _flightNumber),
-                        // builder: (_) => MessageScreen(),
+                        //builder: (_) => PostScreen(flightId: _flightNumber),
+                        builder: (_) => MessageScreen(),
                       ),
                     );
                   },
