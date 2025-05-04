@@ -1,4 +1,7 @@
+import 'package:blacked_flut/components/message.dart';
+import 'package:blacked_flut/components/protocol.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:localstore/localstore.dart';
 
 const List<Map<String, String>> data = [
@@ -147,6 +150,24 @@ Color getAccentColor(String message) {
 }
 
 class _PostScreenState extends State<PostScreen> {
+  late List<Map<String, String>> messages;
+
+  @override
+  void initState() {
+    super.initState();
+    messages = [];
+
+    Protocol.setMessageCallback((Message message) {
+      setState(() {
+        messages.add(<String, String>{
+          "message": message.content,
+          "date": DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now()),
+        });
+      });
+    });
+    Protocol.initialize(3910);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -173,7 +194,7 @@ class _PostScreenState extends State<PostScreen> {
                   textAlign: TextAlign.center,
                 ),
                 const Text(
-                  'keep the info Vueling around.',
+                  'keep the info vueling around.',
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w900,
@@ -227,10 +248,10 @@ class _PostScreenState extends State<PostScreen> {
                         bottom: 140,
                       ), // 👈 margen inferior
 
-                      itemCount: data.length,
+                      itemCount: messages.length,
                       itemBuilder: (context, index) {
-                        final message = data[index]['message']!;
-                        final date = DateTime.parse(data[index]['date']!);
+                        final message = messages[index]['message']!;
+                        final date = DateTime.parse(messages[index]['date']!);
                         final color = getAccentColor(message);
 
                         return Padding(

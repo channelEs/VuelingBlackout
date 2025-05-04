@@ -83,6 +83,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    //return MessageScreen();
     return Scaffold(
       body: Center(
         child: Padding(
@@ -93,7 +94,7 @@ class _MyHomePageState extends State<MyHomePage> {
             children: [
               SvgPicture.asset('assets/unblacked.svg', height: 80),
               const Text(
-                'Lights off, keep Vueling',
+                'lights off, keep vueling',
                 style: TextStyle(
                   fontSize: 24,
                   color: Color(0xFF505047),
@@ -112,7 +113,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 decoration: InputDecoration(
                   hintText: "Your flight number, e.g. VY3219",
                   hintStyle: TextStyle(
-                    fontSize: 18,
+                    fontSize: 16,
                     color: Colors.black.withAlpha(128),
                   ),
                   filled: true,
@@ -182,8 +183,8 @@ class _MyHomePageState extends State<MyHomePage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        //builder: (_) => PostScreen(flightId: _flightNumber),
-                        builder: (_) => MessageScreen(),
+                        builder: (_) => PostScreen(flightId: _flightNumber),
+                        // builder: (_) => MessageScreen(),
                       ),
                     );
                   },
@@ -210,11 +211,6 @@ class _MyHomePageState extends State<MyHomePage> {
             ],
           ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.airplanemode_active),
       ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }

@@ -1,3 +1,4 @@
+import 'package:blacked_flut/components/protocol.dart';
 import 'package:flutter/material.dart';
 import 'package:localstore/localstore.dart';
 
@@ -32,15 +33,32 @@ class _MessageScreenState extends State<MessageScreen> {
             width: double.infinity,
             color: Colors.white,
             padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
-            child: const Text(
-              'Relax, keep the info Vueling around.',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                fontFamily: 'Roboto',
-                color: Colors.black87,
-              ),
-              textAlign: TextAlign.center,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Relax,',
+                  style: TextStyle(
+                    fontSize: 40,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Roboto',
+                    color: Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const Text(
+                  'keep the info vueling around.',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    fontFamily: 'Roboto',
+                    fontStyle: FontStyle.italic,
+                    color: Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ),
           ),
           Expanded(
@@ -81,7 +99,7 @@ class _MessageScreenState extends State<MessageScreen> {
                       decoration: InputDecoration(
                         hintText: "Your flight number, e.g. VY3219",
                         hintStyle: const TextStyle(
-                          fontSize: 18,
+                          fontSize: 16,
                           color: Color.fromARGB(128, 0, 0, 0),
                         ),
                         filled: true,
@@ -180,7 +198,27 @@ class _MessageScreenState extends State<MessageScreen> {
                       height: 56,
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          if (!_readyCheck) {
+                            return;
+                          }
+
+                          if (_flightNumber.isEmpty) {
+                            return;
+                          }
+
+                          if (_messageController.text.isEmpty) {
+                            return;
+                          }
+
+                          int flightNumber = int.parse(
+                            _flightNumber.substring(2),
+                          );
+
+                          String text = _messageController.text;
+                          Protocol.initialize(flightNumber);
+                          Protocol.sendMessage(text);
+                        },
                         /* onPressed:
                             _readyCheck
                                 ? () async {
