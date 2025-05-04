@@ -83,8 +83,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    //return MessageScreen();
-    return Scaffold(
+    return MessageScreen();
+    /*return Scaffold(
       body: Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 30.0),
@@ -212,6 +212,6 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
         ),
       ), // This trailing comma makes auto-formatting nicer for build methods.
-    );
+    );*/
   }
 }

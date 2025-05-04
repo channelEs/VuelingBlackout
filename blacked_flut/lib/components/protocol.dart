@@ -13,6 +13,10 @@ class Protocol {
 
   static Map<String, void> receivedHashes = <String, void>{};
 
+  static void setFlightNumber(int flightNumber) {
+    Protocol.flightNumber = flightNumber;
+  }
+
   static void initialize(int flightNumber) {
     Protocol.flightNumber = flightNumber;
 
@@ -31,7 +35,7 @@ class Protocol {
         }
       }
 
-      sendMessageRaw(message);
+      // sendMessageRaw(message);
     });
   }
 
@@ -45,7 +49,9 @@ class Protocol {
     }
 
     Message msg = Message(flightNumber, content);
-    _ble.sendMessage(msg);
+    if (Ble.isInitialized) {
+      _ble.sendMessage(msg);
+    }
   }
 
   static void sendMessageRaw(Message msg) {

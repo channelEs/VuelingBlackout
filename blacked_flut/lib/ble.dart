@@ -6,6 +6,7 @@ import 'dart:typed_data';
 
 import 'package:blacked_flut/components/message.dart';
 import 'package:ble_peripheral/ble_peripheral.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import 'package:leb128/leb128.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -17,7 +18,7 @@ class Ble {
       'AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz1234567890';
 
   static const headerLength = 2;
-  static const packetSize = 20;
+  static const packetSize = 16;
 
   static int currentMessageId = 0;
 
@@ -70,22 +71,28 @@ class Ble {
       doScan();
       initAdvertise();
 
-      Timer.periodic(Duration(milliseconds: 20), (timer) async {
+      Timer.periodic(Duration(milliseconds: 1250), (timer) async {
         if (isLocked) {
           return;
         }
 
         if (messagesQueue.isNotEmpty) {
           if (isAdvertising) {
+            isLocked = true;
             await BlePeripheral.stopAdvertising();
+            isLocked = false;
             isAdvertising = false;
           }
 
-          BleMessage message = messagesQueue.removeFirst();
-          log(
-            "Sending message ${message.messageId}, ${message.messageIdx}: ${message.payload}",
-          );
-          doSend(message);
+          try {
+            BleMessage message = messagesQueue.removeFirst();
+            log(
+              "Sending message ${message.messageId}, ${message.messageIdx}: ${message.payload}",
+            );
+            doSend(message);
+          } catch (e) {
+            debugPrint("Ble error: $e");
+          }
         }
       });
     });
@@ -246,6 +253,8 @@ class Ble {
   }
 
   void sendMessage(Message message) {
+    log("Sending ${message.content}");
+
     Uint8List contentBytes = utf8.encode(message.content);
     Uint8List flightNumberBytes = Leb128.encodeUnsigned(message.flightNumber);
 
@@ -255,17 +264,64 @@ class Ble {
       needsFragmentation = true;
     }
 
+    BytesBuilder bb = BytesBuilder();
+
+    bb.add(flightNumberBytes);
+    bb.add(contentBytes);
+
+    Uint8List payload = bb.toBytes();
+
     if (!needsFragmentation) {
-      BytesBuilder bb = BytesBuilder();
-
-      bb.add(flightNumberBytes);
-      bb.add(contentBytes);
-
-      Uint8List payload = bb.toBytes();
-
       BleMessage bleMessage = BleMessage(currentMessageId % 256, 0, payload);
       messagesQueue.add(bleMessage);
+      messagesQueue.add(bleMessage);
+      messagesQueue.add(bleMessage);
+      messagesQueue.add(bleMessage);
+    } else {
+      log("Message needs frag: ${payload.lengthInBytes} bytes");
+
+      int bytesProcessed = 0;
+      int bytesLeft = payload.lengthInBytes;
+      int msgIdx = 0;
+
+      while (bytesLeft > 0) {
+        int byteCount = 0;
+        int isLast = 1;
+        if (bytesLeft <= packetSize - headerLength) {
+          byteCount = bytesLeft;
+          isLast = 0;
+        } else {
+          byteCount = packetSize - headerLength;
+        }
+
+        log("Fragment $msgIdx: $byteCount bytes");
+        log("From $bytesProcessed to ${bytesProcessed + byteCount}");
+
+        Uint8List thisPayload = payload.sublist(
+          bytesProcessed,
+          bytesProcessed + byteCount,
+        );
+
+        bytesProcessed += byteCount;
+        bytesLeft -= byteCount;
+
+        int encodedMsgIdx = ((msgIdx & 127) << 1) | isLast;
+
+        BleMessage bleMessage = BleMessage(
+          currentMessageId % 256,
+          encodedMsgIdx,
+          thisPayload,
+        );
+        messagesQueue.add(bleMessage);
+        messagesQueue.add(bleMessage);
+        messagesQueue.add(bleMessage);
+        messagesQueue.add(bleMessage);
+
+        msgIdx++;
+      }
     }
+
+    currentMessageId++;
   }
 
   void log(String text) => print("[ble] ${text}");

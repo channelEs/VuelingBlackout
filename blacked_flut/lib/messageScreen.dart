@@ -1,3 +1,4 @@
+import 'package:blacked_flut/ble.dart';
 import 'package:blacked_flut/components/protocol.dart';
 import 'package:blacked_flut/utils/utils.dart';
 import 'package:flutter/material.dart';
@@ -217,7 +218,14 @@ class _MessageScreenState extends State<MessageScreen> {
                           );
 
                           String text = _messageController.text;
-                          Protocol.initialize(flightNumber);
+
+                          if (!Ble.isInitialized) {
+                            debugPrint("Initializing");
+                            Protocol.initialize(flightNumber);
+                          } else {
+                            Protocol.setFlightNumber(flightNumber);
+                          }
+
                           Protocol.sendMessage(text);
                         },
                         /* onPressed:
